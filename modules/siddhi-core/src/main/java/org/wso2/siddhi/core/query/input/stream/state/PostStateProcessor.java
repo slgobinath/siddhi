@@ -18,7 +18,10 @@
 
 package org.wso2.siddhi.core.query.input.stream.state;
 
+import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.query.processor.Processor;
+
+import java.util.List;
 
 /**
  * Created on 12/17/14.
@@ -35,4 +38,22 @@ public interface PostStateProcessor extends Processor {
 
     PostStateProcessor cloneProcessor(String key);
 
+    /**
+     * Mark this processor as the last processor in an every pattern.
+     *
+     * @param endOfEvery
+     */
+    void setEndOfEvery(boolean endOfEvery);
+
+    /**
+     * Returns a {@link List} of {@link StateEvent}s stored in the processor.
+     *
+     * @return a {@link List} of {@link StateEvent}s
+     */
+    List<StateEvent> events();
+
+    /**
+     * Make the processed new events available for the next processor.
+     */
+    void updateState();
 }

@@ -44,7 +44,7 @@ public class CountInnerStateRuntime extends StreamInnerStateRuntime {
                 .getFirstProcessor();
         CountPostStateProcessor countPostStateProcessor = (CountPostStateProcessor) clonedStreamInnerStateRuntime
                 .getLastProcessor();
-        countPreStateProcessor.setCountPostStateProcessor(countPostStateProcessor);
+//        countPreStateProcessor.setCountPostStateProcessor(countPostStateProcessor);
         return new CountInnerStateRuntime(clonedStreamInnerStateRuntime);
 
     }

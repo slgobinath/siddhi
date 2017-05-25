@@ -20,6 +20,7 @@ package org.wso2.siddhi.core.query.input;
 import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.event.stream.StreamEvent;
+import org.wso2.siddhi.core.query.input.stream.state.LogicalPostStateProcessor;
 import org.wso2.siddhi.core.query.input.stream.state.StreamPreStateProcessor;
 import org.wso2.siddhi.core.query.processor.Processor;
 import org.wso2.siddhi.core.query.selector.QuerySelector;
@@ -40,23 +41,32 @@ public class StateMultiProcessStreamReceiver extends MultiProcessStreamReceiver 
 
     public void setNext(Processor next) {
         super.setNext(next);
-        this.querySelector = (QuerySelector) ((StreamPreStateProcessor) next).getThisStatePostProcessor()
-                .getNextProcessor();
+        Processor last = ((StreamPreStateProcessor) next).getThisStatePostProcessor().getNextProcessor();
+        if (last != null) {
+            if (last instanceof QuerySelector) {
+                this.querySelector = (QuerySelector) last;
+            } else if (last instanceof LogicalPostStateProcessor) {
+                this.querySelector = (QuerySelector) last.getNextProcessor();
+            }
+        }
     }
 
     public StateMultiProcessStreamReceiver clone(String key) {
         return new StateMultiProcessStreamReceiver(streamId + key, processCount, latencyTracker, queryName);
     }
 
-    protected void processAndClear(int processIndex, StreamEvent streamEvent) {
+    protected boolean processAndClear(int processIndex, StreamEvent streamEvent) {
+
         ComplexEventChunk<StateEvent> retEventChunk = new ComplexEventChunk<StateEvent>(batchProcessingAllowed);
         ComplexEventChunk<StreamEvent> currentStreamEventChunk = new ComplexEventChunk<StreamEvent>(streamEvent,
                 streamEvent, batchProcessingAllowed);
 
         ComplexEventChunk<StateEvent> eventChunk = ((StreamPreStateProcessor) nextProcessors[processIndex])
                 .processAndReturn(currentStreamEventChunk);
+        boolean consumed = ((StreamPreStateProcessor) nextProcessors[processIndex]).hasConsumedLastEvent();
         if (eventChunk.getFirst() != null) {
             retEventChunk.add(eventChunk.getFirst());
+//            consumed = true;
         }
         eventChunk.clear();
 
@@ -68,7 +78,7 @@ public class StateMultiProcessStreamReceiver extends MultiProcessStreamReceiver 
                         batchProcessingAllowed));
             }
         }
-
+        return consumed;
     }
 
 }

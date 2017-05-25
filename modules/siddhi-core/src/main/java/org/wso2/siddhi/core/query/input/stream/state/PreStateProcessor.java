@@ -19,17 +19,12 @@
 package org.wso2.siddhi.core.query.input.stream.state;
 
 import org.wso2.siddhi.core.event.ComplexEventChunk;
-import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.query.processor.Processor;
 
 /**
  * Created on 12/17/14.
  */
 public interface PreStateProcessor extends Processor {
-
-    void addState(StateEvent stateEvent);
-
-    void addEveryState(StateEvent stateEvent);
 
     ComplexEventChunk processAndReturn(ComplexEventChunk complexEventChunk);
 
@@ -48,5 +43,28 @@ public interface PreStateProcessor extends Processor {
     void resetState();
 
     PreStateProcessor cloneProcessor(String key);
+
+    /**
+     * Set this processor as the starting state of an every pattern.
+     *
+     * @param isStartEvery
+     */
+    void setStartOfEvery(boolean isStartEvery);
+
+    /**
+     * Returns whether the last event was consumed by this processor or not.
+     *
+     * @return true if the last event was consumed by this processor otherwise false.
+     */
+    boolean hasConsumedLastEvent();
+
+    PostStateProcessor getPreviousStatePostProcessor();
+
+    /**
+     * Set the previous {@link PostStateProcessor} of this processor.
+     *
+     * @param postStateProcessor the previous PostStateProcessor
+     */
+    void setPreviousStatePostProcessor(PostStateProcessor postStateProcessor);
 
 }

@@ -21,7 +21,10 @@ package org.wso2.siddhi.core.query.input.stream.state;
 import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.event.stream.StreamEvent;
-import org.wso2.siddhi.query.api.execution.query.input.stream.StateInputStream;
+
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created on 1/6/15.
@@ -29,6 +32,7 @@ import org.wso2.siddhi.query.api.execution.query.input.stream.StateInputStream;
 public class CountPostStateProcessor extends StreamPostStateProcessor {
     private final int minCount;
     private final int maxCount;
+    protected StreamEvent lastEvent;
 
     public CountPostStateProcessor(int minCount, int maxCount) {
 
@@ -43,54 +47,171 @@ public class CountPostStateProcessor extends StreamPostStateProcessor {
     }
 
     protected void process(StateEvent stateEvent, ComplexEventChunk complexEventChunk) {
-        StreamEvent streamEvent = stateEvent.getStreamEvent(stateId);
-        int streamEvents = 1;
-        while (streamEvent.getNext() != null) {
-            streamEvents++;
-            streamEvent = streamEvent.getNext();
-        }
-        ((CountPreStateProcessor) thisStatePreProcessor).successCondition();
-        stateEvent.setTimestamp(streamEvent.getTimestamp());
 
-        if (streamEvents >= minCount) {
 
-            if (thisStatePreProcessor.stateType == StateInputStream.Type.SEQUENCE) {
-                if (nextStatePerProcessor != null) {
-                    nextStatePerProcessor.addState(stateEvent);
-                }
-                if (streamEvents != maxCount) {
-                    thisStatePreProcessor.addState(stateEvent);
-                }
-            } else if (streamEvents == minCount) {
-                processMinCountReached(stateEvent, complexEventChunk);
+        if (pendingStateEventList.isEmpty()) {
+            if (newAndEveryStateEventList.isEmpty()) {
+                newAndEveryStateEventList.add(stateEvent);
+            } else {
+                newAndEveryStateEventList.get(0).addEvent(stateId, stateEvent.getStreamEvent(stateId));
+                newAndEveryStateEventList.get(0).setTimestamp(stateEvent.getStreamEvent(stateId).getTimestamp());
             }
-            if (streamEvents == maxCount) {
-                thisStatePreProcessor.stateChanged();
+        } else {
+            newAndEveryStateEventList.clear();
+            newAndEveryStateEventList.add(pendingStateEventList.get(0));
+            newAndEveryStateEventList.get(0).addEvent(stateId, stateEvent.getStreamEvent(stateId));
+            newAndEveryStateEventList.get(0).setTimestamp(stateEvent.getStreamEvent(stateId).getTimestamp());
+            pendingStateEventList.clear();
+        }
+        int streamEvents = getStreamCount(newAndEveryStateEventList);
+
+        if (streamEvents < minCount) {
+            thisStatePreProcessor.setConsumedLastEvent(true);
+        } else {
+            thisStatePreProcessor.setConsumedLastEvent(false);
+        }
+        thisStatePreProcessor.stateChanged();
+
+    }
+
+    @Override
+    public boolean isEventReturned() {
+        int limit = minCount;
+        if (limit == 0) {
+            limit = maxCount;
+        }
+        if (getStreamCount(newAndEveryStateEventList) >= limit) {
+            super.updateState();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void updateState() {
+        if (getStreamCount(newAndEveryStateEventList) >= minCount) {
+//            for (StateEvent event : newAndEveryStateEventList) {
+//                if (pendingStateEventList.isEmpty()) {
+//                    pendingStateEventList.add(event);
+//                } else {
+//                    System.out.println("---------------------------------------");
+//                    pendingStateEventList.get(0).addEvent(stateId, event.getStreamEvent(stateId));
+//                    pendingStateEventList.get(0).setTimestamp(event.getStreamEvent(stateId).getTimestamp());
+//                }
+//            }
+//            newAndEveryStateEventList.clear();
+            super.updateState();
+        }
+    }
+
+    private int getStreamCount(List<StateEvent> events) {
+        int streamEvents;
+        if (events.size() == 1) {
+
+            if (events.isEmpty()) {
+                streamEvents = 0;
+            } else {
+                StreamEvent streamEvent = events.get(0).getStreamEvent(stateId);
+                if (streamEvent == null) {
+                    streamEvents = 0;
+                } else {
+                    streamEvents = 1;
+                    while (streamEvent.getNext() != null) {
+                        streamEvents++;
+                        streamEvent = streamEvent.getNext();
+                    }
+                }
+            }
+        } else {
+            streamEvents = events.size();
+        }
+
+        return streamEvents;
+    }
+
+    /**
+     * Returns a {@link List} of {@link StateEvent}s stored in the processor.
+     *
+     * @return a {@link List} of {@link StateEvent}s
+     */
+    @Override
+    public List<StateEvent> events() {
+
+        List<StateEvent> events = pendingStateEventList;
+        if (events.isEmpty()) {
+            List<StateEvent> list;
+            if (minCount == 0) {
+                if (newAndEveryStateEventList.size() == 1) {
+                    list = new MyList();
+                    StateEvent stateEvent = cloneEvent(newAndEveryStateEventList.get(0));
+                    list.add(stateEvent);
+                } else if (thisStatePreProcessor.getPreviousStatePostProcessor() != null) {
+                    list = thisStatePreProcessor.getPreviousStatePostProcessor().events();
+                } else {
+                    list = new LinkedList<>();
+
+                    if (thisStatePreProcessor.isStartState) {
+
+                        list.add(thisStatePreProcessor.stateEventPool.borrowEvent());
+                    }
+                }
+            } else {
+                list = events;
+            }
+            return list;
+
+        } else {
+            int streamEvents = getStreamCount(events);
+            if (streamEvents >= minCount) {
+                return events;
+            } else {
+                return new LinkedList<>();
             }
         }
     }
 
-    public void processMinCountReached(StateEvent stateEvent, ComplexEventChunk complexEventChunk) {
-        if (nextProcessor != null) {
-            thisStatePreProcessor.stateChanged();
-            complexEventChunk.reset();
-            this.isEventReturned = true;
+    private StateEvent cloneEvent(StateEvent event) {
+        StateEvent newSateEvent = thisStatePreProcessor.stateEventCloner.copyStateEvent(event);
+        newSateEvent.setEvent(stateId, null);
+        StreamEvent oldStreamEvent = event.getStreamEvent(stateId);
+
+        while (oldStreamEvent.getNext() != null) {
+            newSateEvent.addEvent(stateId, thisStatePreProcessor.streamEventCloner.copyStreamEvent(oldStreamEvent));
+            oldStreamEvent = oldStreamEvent.getNext();
         }
-        if (nextStatePerProcessor != null) {
-            nextStatePerProcessor.addState(stateEvent);
-        }
-        if (nextEveryStatePerProcessor != null) {
-            nextEveryStatePerProcessor.addEveryState(stateEvent);
+        return newSateEvent;
+    }
+
+
+    private class MyList extends LinkedList<StateEvent> {
+        @Override
+        public Iterator<StateEvent> iterator() {
+            return new MyIterator(super.iterator());
         }
     }
 
-    public void setNextStatePreProcessor(PreStateProcessor preStateProcessor) {
-        this.nextStatePerProcessor = preStateProcessor;
-        if (thisStatePreProcessor.isStartState &&
-                thisStatePreProcessor.stateType == StateInputStream.Type.SEQUENCE &&
-                minCount == 0) {
-            preStateProcessor.getThisStatePostProcessor().setCallbackPreStateProcessor(
-                    (CountPreStateProcessor) thisStatePreProcessor);
+    private class MyIterator implements Iterator<StateEvent> {
+        private Iterator<StateEvent> iterator;
+
+        public MyIterator(Iterator<StateEvent> iterator) {
+            this.iterator = iterator;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iterator.hasNext();
+        }
+
+        @Override
+        public StateEvent next() {
+            return iterator.next();
+        }
+
+        @Override
+        public void remove() {
+            iterator.remove();
+            newAndEveryStateEventList.clear();
+//            thisStatePreProcessor.previousStatePostProcessor.events().clear();
         }
     }
 }

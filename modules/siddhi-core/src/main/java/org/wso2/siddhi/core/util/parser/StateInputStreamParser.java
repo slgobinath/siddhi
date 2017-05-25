@@ -247,6 +247,11 @@ public class StateInputStreamParser {
             if (stateType == StateInputStream.Type.PATTERN) {
                 everyInnerStateRuntime.getLastProcessor().setNextEveryStatePerProcessor(everyInnerStateRuntime
                                                                                                 .getFirstProcessor());
+                // Mark the first processor as the start of every
+                everyInnerStateRuntime.getFirstProcessor().setStartOfEvery(true);
+
+                // Mark the last processor as the end of every
+                everyInnerStateRuntime.getLastProcessor().setEndOfEvery(true);
             }
             return everyInnerStateRuntime;
 
@@ -261,56 +266,99 @@ public class StateInputStreamParser {
                         (), withinStateset));
             }
 
-            LogicalPreStateProcessor logicalPreStateProcessor1 = new LogicalPreStateProcessor(type, stateType,
-                                                                                              withinStates);
-            logicalPreStateProcessor1.init(executionPlanContext, queryName);
-            LogicalPostStateProcessor logicalPostStateProcessor1 = new LogicalPostStateProcessor(type);
+            LogicalPreStateProcessor logicalPreStateProcessor = new LogicalPreStateProcessor(type, stateType,
+                    withinStates);
 
-            LogicalPreStateProcessor logicalPreStateProcessor2 = new LogicalPreStateProcessor(type, stateType,
-                                                                                              withinStates);
+            LogicalPostStateProcessor logicalPostStateProcessor = new LogicalPostStateProcessor(type);
+
+            logicalPreStateProcessor.setThisStatePostProcessor(logicalPostStateProcessor);
+
+//            LogicalPreStateProcessor logicalPreStateProcessor1 = new LogicalPreStateProcessor(type, stateType,
+//                                                                                              withinStates);
+//            logicalPreStateProcessor1.init(executionPlanContext, queryName);
+//            LogicalPostStateProcessor logicalPostStateProcessor1 = new LogicalPostStateProcessor(type);
+//
+//            LogicalPreStateProcessor logicalPreStateProcessor2 = new LogicalPreStateProcessor(type, stateType,
+//                                                                                              withinStates);
+//            logicalPreStateProcessor2.init(executionPlanContext, queryName);
+//            LogicalPostStateProcessor logicalPostStateProcessor2 = new LogicalPostStateProcessor(type);
+
+
+            StreamPreStateProcessor logicalPreStateProcessor1 = new StreamPreStateProcessor(stateType, withinStates);
+            logicalPreStateProcessor1.init(executionPlanContext, queryName);
+
+            StreamPostStateProcessor logicalPostStateProcessor1 = new StreamPostStateProcessor();
+
+            StreamPreStateProcessor logicalPreStateProcessor2 = new StreamPreStateProcessor(stateType, withinStates);
             logicalPreStateProcessor2.init(executionPlanContext, queryName);
-            LogicalPostStateProcessor logicalPostStateProcessor2 = new LogicalPostStateProcessor(type);
+
+            StreamPostStateProcessor logicalPostStateProcessor2 = new StreamPostStateProcessor();
+
+            logicalPreStateProcessor.addStreamPreStateProcessor(logicalPreStateProcessor1);
+            logicalPreStateProcessor.addStreamPreStateProcessor(logicalPreStateProcessor2);
+
+            logicalPostStateProcessor.addStreamPostStateProcessor(logicalPostStateProcessor1);
+            logicalPostStateProcessor.addStreamPostStateProcessor(logicalPostStateProcessor2);
 
             if (stateElement.getWithin() != null) {
                 withinStates.remove(0);
             }
 
-            logicalPostStateProcessor1.setPartnerPreStateProcessor(logicalPreStateProcessor2);
-            logicalPostStateProcessor2.setPartnerPreStateProcessor(logicalPreStateProcessor1);
+//            logicalPostStateProcessor1.setPartnerPreStateProcessor(logicalPreStateProcessor2);
+//            logicalPostStateProcessor2.setPartnerPreStateProcessor(logicalPreStateProcessor1);
+//
+//            logicalPostStateProcessor1.setPartnerPostStateProcessor(logicalPostStateProcessor2);
+//            logicalPostStateProcessor2.setPartnerPostStateProcessor(logicalPostStateProcessor1);
+//
+//            logicalPreStateProcessor1.setPartnerStatePreProcessor(logicalPreStateProcessor2);
+//            logicalPreStateProcessor2.setPartnerStatePreProcessor(logicalPreStateProcessor1);
 
-            logicalPostStateProcessor1.setPartnerPostStateProcessor(logicalPostStateProcessor2);
-            logicalPostStateProcessor2.setPartnerPostStateProcessor(logicalPostStateProcessor1);
-
-            logicalPreStateProcessor1.setPartnerStatePreProcessor(logicalPreStateProcessor2);
-            logicalPreStateProcessor2.setPartnerStatePreProcessor(logicalPreStateProcessor1);
-
-            StateElement stateElement2 = ((LogicalStateElement) stateElement).getStreamStateElement2();
-            InnerStateRuntime innerStateRuntime2 = parse(stateElement2, streamDefinitionMap, tableDefinitionMap,
-                                                         windowDefinitionMap, tableMap, metaStateEvent,
-                                                         executionPlanContext, variableExpressionExecutors, processStreamReceiverMap,
-                                                         logicalPreStateProcessor2, logicalPostStateProcessor2,
-                                                         stateType, withinStates, latencyTracker,
-                                                         queryName);
 
             StateElement stateElement1 = ((LogicalStateElement) stateElement).getStreamStateElement1();
             InnerStateRuntime innerStateRuntime1 = parse(stateElement1, streamDefinitionMap, tableDefinitionMap,
-                                                         windowDefinitionMap, tableMap, metaStateEvent,
-                                                         executionPlanContext, variableExpressionExecutors, processStreamReceiverMap,
-                                                         logicalPreStateProcessor1, logicalPostStateProcessor1, stateType, withinStates, latencyTracker,
-                                                         queryName);
+                    windowDefinitionMap, tableMap, metaStateEvent,
+                    executionPlanContext, variableExpressionExecutors, processStreamReceiverMap,
+                    logicalPreStateProcessor1, logicalPostStateProcessor1, stateType, withinStates, latencyTracker,
+                    queryName);
 
+            StateElement stateElement2 = ((LogicalStateElement) stateElement).getStreamStateElement2();
+            InnerStateRuntime innerStateRuntime2 = parse(stateElement2, streamDefinitionMap, tableDefinitionMap,
+                    windowDefinitionMap, tableMap, metaStateEvent,
+                    executionPlanContext, variableExpressionExecutors, processStreamReceiverMap,
+                    logicalPreStateProcessor2, logicalPostStateProcessor2,
+                    stateType, withinStates, latencyTracker,
+                    queryName);
 
             LogicalInnerStateRuntime logicalInnerStateRuntime = new LogicalInnerStateRuntime(
                     innerStateRuntime1, innerStateRuntime2, stateType);
 
-            logicalInnerStateRuntime.setFirstProcessor(innerStateRuntime1.getFirstProcessor());
-            logicalInnerStateRuntime.setLastProcessor(innerStateRuntime2.getLastProcessor());
 
-            for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime2.getSingleStreamRuntimeList()) {
-                logicalInnerStateRuntime.addStreamRuntime(singleStreamRuntime);
+            logicalPreStateProcessor1.setThisLastProcessor(logicalPostStateProcessor);
+            logicalPreStateProcessor2.setThisLastProcessor(logicalPostStateProcessor);
+
+            logicalPreStateProcessor.setNextProcessor(innerStateRuntime1.getFirstProcessor());
+            logicalInnerStateRuntime.setFirstProcessor(logicalPreStateProcessor);
+
+            innerStateRuntime2.getLastProcessor().setNextProcessor(logicalPostStateProcessor);
+            innerStateRuntime2.setLastProcessor(logicalPostStateProcessor);
+
+            logicalInnerStateRuntime.setLastProcessor(logicalPostStateProcessor);
+
+//            logicalInnerStateRuntime.setFirstProcessor(innerStateRuntime1.getFirstProcessor());
+//            logicalInnerStateRuntime.setLastProcessor(innerStateRuntime2.getLastProcessor());
+
+
+            if (type == LogicalStateElement.Type.AND) {
+                innerStateRuntime1.getFirstProcessor().setPreviousStatePostProcessor(null);
+                innerStateRuntime2.getFirstProcessor().setPreviousStatePostProcessor
+                        (innerStateRuntime1.getLastProcessor());
             }
 
             for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime1.getSingleStreamRuntimeList()) {
+                logicalInnerStateRuntime.addStreamRuntime(singleStreamRuntime);
+            }
+
+            for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime2.getSingleStreamRuntimeList()) {
                 logicalInnerStateRuntime.addStreamRuntime(singleStreamRuntime);
             }
 
@@ -343,7 +391,6 @@ public class StateInputStreamParser {
                 withinStates.remove(0);
             }
 
-            countPreStateProcessor.setCountPostStateProcessor(countPostStateProcessor);
             StateElement currentElement = ((CountStateElement) stateElement).getStreamStateElement();
             InnerStateRuntime innerStateRuntime = parse(currentElement, streamDefinitionMap, tableDefinitionMap,
                                                         windowDefinitionMap, tableMap, metaStateEvent,

@@ -1,130 +1,183 @@
-/*
- * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
- *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 package org.wso2.siddhi.core.query.input.stream.state;
 
-import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
-import org.wso2.siddhi.core.query.processor.Processor;
 import org.wso2.siddhi.query.api.execution.query.input.state.LogicalStateElement;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+
 /**
- * Created on 12/28/14.
+ * Created by gobinath on 5/21/17.
  */
 public class LogicalPostStateProcessor extends StreamPostStateProcessor {
 
-    private LogicalStateElement.Type type;
-    private LogicalPreStateProcessor partnerPreStateProcessor;
-    private LogicalPostStateProcessor partnerPostStateProcessor;
+    private LogicalStateElement.Type logicalType;
 
-    public LogicalPostStateProcessor(LogicalStateElement.Type type) {
+    private List<StreamPostStateProcessor> streamPostStateProcessors = new LinkedList<>();
 
-        this.type = type;
+    public LogicalPostStateProcessor(LogicalStateElement.Type logicalType) {
+        this.logicalType = logicalType;
     }
 
-    public LogicalStateElement.Type getType() {
-        return type;
+    @Override
+    public void setNextStatePreProcessor(PreStateProcessor preStateProcessor) {
+        super.setNextStatePreProcessor(preStateProcessor);
     }
 
-//    /**
-//     * Process the handed StreamEvent
-//     *
-//     * @param complexEventChunk event chunk to be processed
-//     */
-//    @Override
-//    public void process(ComplexEventChunk complexEventChunk) {
-//        complexEventChunk.reset();
-//        if (complexEventChunk.hasNext()) {     //one one event will be coming
-//            StateEvent stateEvent = (StateEvent) complexEventChunk.next();
-//
+    @Override
+    public void setEndOfEvery(boolean endOfEvery) {
+        super.setEndOfEvery(endOfEvery);
+        for (StreamPostStateProcessor processor : this.streamPostStateProcessors) {
+            processor.setEndOfEvery(endOfEvery);
+        }
+    }
+
+    public void addStreamPostStateProcessor(StreamPostStateProcessor processor) {
+        this.streamPostStateProcessors.add(processor);
+//        if(logicalType == LogicalStateElement.Type.OR) {
+//            processor.newAndEveryStateEventList = this.newAndEveryStateEventList;
+//            processor.pendingStateEventList = this.pendingStateEventList;
 //        }
-//        complexEventChunk.clear();
+    }
+
+
+    @Override
+    public boolean isEventReturned() {
+        if (nextStatePerProcessor != null) {
+            return false;
+        }
+        if (logicalType == LogicalStateElement.Type.OR) {
+            for (StreamPostStateProcessor processor : streamPostStateProcessors) {
+                if (!processor.newAndEveryStateEventList.isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
+//            return !newAndEveryStateEventList.isEmpty();
+        } else if (logicalType == LogicalStateElement.Type.AND) {
+            boolean consume = true;
+            for (StreamPostStateProcessor processor : streamPostStateProcessors) {
+                if (processor.newAndEveryStateEventList.isEmpty() && processor.pendingStateEventList.isEmpty()) {
+                    consume = false;
+                    break;
+                }
+            }
+            return consume;
+        }
+        return false;
+    }
+
+
+    /**
+     * Returns a {@link List} of {@link StateEvent}s stored in the processor.
+     *
+     * @return a {@link List} of {@link StateEvent}s
+     */
+    @Override
+    public List<StateEvent> events() {
+        List<StateEvent> events = new LinkedList<>();
+        if (logicalType == LogicalStateElement.Type.OR) {
+            /*if (false) {
+                for (StreamPostStateProcessor processor : streamPostStateProcessors) {
+                    if (!processor.newAndEveryStateEventList.isEmpty()) {
+                        events.addAll(processor.newAndEveryStateEventList);
+                    }
+                }
+            } else {*/
+            for (StreamPostStateProcessor processor : streamPostStateProcessors) {
+                if (!processor.newAndEveryStateEventList.isEmpty()) {
+                    events = processor.newAndEveryStateEventList;
+                    break;
+                }
+            }
+            //}
+//            return this.pendingStateEventList;
+        } else {
+            // AND
+            events = streamPostStateProcessors.get(streamPostStateProcessors.size() - 1).newAndEveryStateEventList;
+        }
+        return events;
+    }
+
+
+//    @Override
+//    public List<StateEvent> events() {
+//        List<StateEvent> events = new LinkedList<>();
+//        if (logicalType == LogicalStateElement.Type.OR) {
+//            if (endOfEvery) {
+//                List<StateEvent>[] lists = new List[streamPostStateProcessors.size()];
+//                for (int i = 0; i < lists.length; i++) {
+//                    lists[i] = streamPostStateProcessors.get(i).newAndEveryStateEventList;
+//                }
+//                events = new MyList(lists);
+//            } else {
+//                for (StreamPostStateProcessor processor : streamPostStateProcessors) {
+//                    if (!processor.newAndEveryStateEventList.isEmpty()) {
+//                        events = processor.newAndEveryStateEventList;
+//                        break;
+//                    }
+//                }
+//            }
+//        } else {
+//            // AND
+//            events = streamPostStateProcessors.get(streamPostStateProcessors.size() - 1).newAndEveryStateEventList;
+//        }
+//        return events;
 //    }
 
-    protected void process(StateEvent stateEvent, ComplexEventChunk complexEventChunk) {
-        switch (type) {
-            case AND:
-                if (stateEvent.getStreamEvent(partnerPreStateProcessor.getStateId()) != null) {
-                    super.process(stateEvent, complexEventChunk);
-                } else {
-                    thisStatePreProcessor.stateChanged();
+    private class MyList extends LinkedList<StateEvent> {
+
+        private final int size;
+        private List<StateEvent>[] sublists;
+
+        public MyList(List<StateEvent>... lists) {
+            this.sublists = lists;
+            this.size = lists.length;
+        }
+
+        @Override
+        public Iterator<StateEvent> iterator() {
+            Iterator<StateEvent>[] iterators = new Iterator[size];
+            for (int i = 0; i < size; i++) {
+                iterators[i] = sublists[i].iterator();
+            }
+            return new MyIterator(iterators);
+        }
+    }
+
+    private class MyIterator implements Iterator<StateEvent> {
+        private final Iterator<StateEvent>[] iterators;
+        private final int size;
+        private int index = 0;
+
+        public MyIterator(Iterator<StateEvent>... iterators) {
+            this.iterators = iterators;
+            this.size = iterators.length;
+        }
+
+        @Override
+        public boolean hasNext() {
+            boolean has = iterators[index].hasNext();
+            while (!has) {
+                index++;
+                if (index == size) {
+                    index--;
+                    break;
                 }
-                break;
-            case OR:
-                super.process(stateEvent, complexEventChunk);
-                break;
-            case NOT:
-                break;
+                has = iterators[index].hasNext();
+            }
+            return has;
         }
-    }
 
-    public void setPartnerPreStateProcessor(LogicalPreStateProcessor partnerPreStateProcessor) {
-        this.partnerPreStateProcessor = partnerPreStateProcessor;
-    }
-
-    public void setPartnerPostStateProcessor(LogicalPostStateProcessor partnerPostStateProcessor) {
-        this.partnerPostStateProcessor = partnerPostStateProcessor;
-    }
-
-    /**
-     * Set next processor element in processor chain
-     *
-     * @param nextProcessor Processor to be set as next element of processor chain
-     */
-    @Override
-    public void setNextProcessor(Processor nextProcessor) {
-        this.nextProcessor = nextProcessor;
-    }
-
-    /**
-     * Set as the last element of the processor chain
-     *
-     * @param processor Last processor in the chain
-     */
-    @Override
-    public void setToLast(Processor processor) {
-        if (nextProcessor == null) {
-            this.nextProcessor = processor;
-        } else {
-            this.nextProcessor.setToLast(processor);
+        @Override
+        public StateEvent next() {
+            return iterators[index].next();
         }
-    }
 
-    /**
-     * Clone a copy of processor
-     *
-     * @param key partition key
-     * @return clone of PostStateProcessor
-     */
-    @Override
-    public PostStateProcessor cloneProcessor(String key) {
-        LogicalPostStateProcessor logicalPostStateProcessor = new LogicalPostStateProcessor(type);
-        cloneProperties(logicalPostStateProcessor);
-        return logicalPostStateProcessor;
-    }
-
-    public void setNextStatePreProcessor(PreStateProcessor preStateProcessor) {
-        this.nextStatePerProcessor = preStateProcessor;
-        partnerPostStateProcessor.nextStatePerProcessor = preStateProcessor;
-    }
-
-    public void setNextEveryStatePerProcessor(PreStateProcessor nextEveryStatePerProcessor) {
-        this.nextEveryStatePerProcessor = nextEveryStatePerProcessor;
-        partnerPostStateProcessor.nextEveryStatePerProcessor = nextEveryStatePerProcessor;
+        @Override
+        public void remove() {
+            iterators[index].remove();
+        }
     }
 }

@@ -23,6 +23,9 @@ import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.event.stream.StreamEvent;
 import org.wso2.siddhi.core.query.processor.Processor;
 
+import java.util.LinkedList;
+import java.util.List;
+
 /**
  * Created on 12/17/14.
  */
@@ -34,6 +37,21 @@ public class StreamPostStateProcessor implements PostStateProcessor {
     protected int stateId;
     protected CountPreStateProcessor callbackPreStateProcessor;
     protected boolean isEventReturned;
+
+    /**
+     * List of newly arrived process events.
+     */
+    protected List<StateEvent> newAndEveryStateEventList = new LinkedList<>();
+
+    /**
+     * List of processed events moved from {@link StreamPreStateProcessor#newAndEveryStateEventList}.
+     */
+    protected List<StateEvent> pendingStateEventList = new LinkedList<>();
+
+    /**
+     * A flag indicates whether this is the last processor in an every pattern.
+     */
+    protected boolean endOfEvery = false;
 
     /**
      * Process the handed StreamEvent
@@ -60,14 +78,12 @@ public class StreamPostStateProcessor implements PostStateProcessor {
             complexEventChunk.reset();
             this.isEventReturned = true;
         }
-        if (nextStatePerProcessor != null) {
-            nextStatePerProcessor.addState(stateEvent);
-        }
-        if (nextEveryStatePerProcessor != null) {
-            nextEveryStatePerProcessor.addEveryState(stateEvent);
-        }
-        if (callbackPreStateProcessor != null) {
-            callbackPreStateProcessor.startStateReset();
+        if (endOfEvery) {
+            newAndEveryStateEventList.add(stateEvent);
+            thisStatePreProcessor.setConsumedLastEvent(!thisStatePreProcessor.startOfEvery);
+        } else if (newAndEveryStateEventList.isEmpty() && pendingStateEventList.isEmpty()) {
+            newAndEveryStateEventList.add(stateEvent);
+            thisStatePreProcessor.setConsumedLastEvent(true);
         }
     }
 
@@ -126,12 +142,44 @@ public class StreamPostStateProcessor implements PostStateProcessor {
         return streamPostStateProcessor;
     }
 
+    /**
+     * Mark this processor as the last processor in an every pattern.
+     *
+     * @param endOfEvery
+     */
+    @Override
+    public void setEndOfEvery(boolean endOfEvery) {
+        this.endOfEvery = endOfEvery;
+    }
+
+    /**
+     * Returns a {@link List} of {@link StateEvent}s stored in the processor.
+     *
+     * @return a {@link List} of {@link StateEvent}s
+     */
+    public List<StateEvent> events() {
+        return this.pendingStateEventList;
+    }
+
+    /**
+     * Make the processed new events available for the next processor.
+     */
+    @Override
+    public void updateState() {
+        pendingStateEventList.addAll(newAndEveryStateEventList);
+        newAndEveryStateEventList.clear();
+    }
+
     protected void cloneProperties(StreamPostStateProcessor streamPostStateProcessor) {
         streamPostStateProcessor.stateId = stateId;
     }
 
+    @Override
     public void setNextStatePreProcessor(PreStateProcessor preStateProcessor) {
         this.nextStatePerProcessor = preStateProcessor;
+
+        // Set this as the previous post state processor
+        preStateProcessor.setPreviousStatePostProcessor(this);
     }
 
     public PreStateProcessor getNextStatePerProcessor() {

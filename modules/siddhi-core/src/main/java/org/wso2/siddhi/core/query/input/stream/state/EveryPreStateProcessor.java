@@ -13,21 +13,16 @@ import java.util.Set;
 /**
  * Created by gobinath on 5/21/17.
  */
-public class LogicalPreStateProcessor extends StreamPreStateProcessor {
+public class EveryPreStateProcessor extends StreamPreStateProcessor {
 
     private LogicalStateElement.Type logicalType;
 
     private List<StreamPreStateProcessor> streamPreStateProcessors = new LinkedList<>();
 
-    public LogicalPreStateProcessor(LogicalStateElement.Type type, StateInputStream.Type stateType, List<Map
+    public EveryPreStateProcessor(LogicalStateElement.Type type, StateInputStream.Type stateType, List<Map
             .Entry<Long, Set<Integer>>> withinStates) {
         super(stateType, withinStates);
         this.logicalType = type;
-    }
-
-    @Override
-    public void init() {
-        super.init();
     }
 
     @Override

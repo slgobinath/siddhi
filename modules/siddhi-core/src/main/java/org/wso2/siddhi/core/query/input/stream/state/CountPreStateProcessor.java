@@ -18,12 +18,11 @@
 
 package org.wso2.siddhi.core.query.input.stream.state;
 
-import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
-import org.wso2.siddhi.core.event.stream.StreamEvent;
 import org.wso2.siddhi.query.api.execution.query.input.stream.StateInputStream;
 
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,83 +54,61 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
     }
 
     @Override
-    public ComplexEventChunk<StateEvent> processAndReturn(ComplexEventChunk complexEventChunk) {
-        ComplexEventChunk<StateEvent> returnEventChunk = new ComplexEventChunk<StateEvent>(false);
-        complexEventChunk.reset();
-        StreamEvent streamEvent = (StreamEvent) complexEventChunk.next(); //Sure only one will be sent
-        for (Iterator<StateEvent> iterator = pendingStateEventList.iterator(); iterator.hasNext(); ) {
-            StateEvent stateEvent = iterator.next();
-            if (removeIfNextStateProcessed(stateEvent, iterator, stateId + 1)) {
-                continue;
-            }
-            if (removeIfNextStateProcessed(stateEvent, iterator, stateId + 2)) {
-                continue;
-            }
-            stateEvent.addEvent(stateId, streamEventCloner.copyStreamEvent(streamEvent));
-            successCondition = false;
-            process(stateEvent);
-            if (this.thisLastProcessor.isEventReturned()) {
-                this.thisLastProcessor.clearProcessedEvent();
-                returnEventChunk.add(stateEvent);
-            }
-            if (stateChanged) {
-                iterator.remove();
-            }
-            if (!successCondition) {
-                switch (stateType) {
-                    case PATTERN:
-                        stateEvent.removeLastEvent(stateId);
-                        break;
-                    case SEQUENCE:
-                        stateEvent.removeLastEvent(stateId);
-                        iterator.remove();
-                        break;
-                }
-            }
-        }
-        return returnEventChunk;
+    public void updateState() {
+        super.updateState();
     }
-
-    private boolean removeIfNextStateProcessed(StateEvent stateEvent, Iterator<StateEvent> iterator, int position) {
-        if (stateEvent.getStreamEvents().length > position && stateEvent.getStreamEvent(position) != null) {
-            iterator.remove();
-            return true;
-        }
-        return false;
-    }
-
-    public void successCondition() {
-        this.successCondition = true;
-    }
-
 
     @Override
-    public void addState(StateEvent stateEvent) {
-        //        if (stateType == StateInputStream.Type.SEQUENCE) {
-        //            newAndEveryStateEventList.clear();
-        //            pendingStateEventList.clear();
-        //        }
-        if (stateType == StateInputStream.Type.SEQUENCE) {
-            if (newAndEveryStateEventList.isEmpty()) {
-                newAndEveryStateEventList.add(stateEvent);
+    protected Iterator<StateEvent> iterator() {
+        List<StateEvent> list;
+        if (previousStatePostProcessor != null) {
+            if (thisStatePostProcessor.pendingStateEventList.isEmpty()) {
+                list = previousStatePostProcessor.events();
+            } else {
+                list = new LinkedList<>();
+                StateEvent stateEvent = stateEventCloner.copyStateEvent(thisStatePostProcessor.pendingStateEventList
+                        .get(0));
+                stateEvent.setEvent(stateId, null);
+                list.add(stateEvent);
             }
         } else {
-            newAndEveryStateEventList.add(stateEvent);
+            list = new LinkedList<>();
+            if (isStartState) {
+                list.add(stateEventPool.borrowEvent());
+            }
         }
-        if (minCount == 0 && stateEvent.getStreamEvent(stateId) == null) {
-            currentStateEventChunk.clear();
-            currentStateEventChunk.add(stateEvent);
-            countPostStateProcessor.processMinCountReached(stateEvent, currentStateEventChunk);
-            currentStateEventChunk.clear();
+        return list.iterator();
+    }
+
+    private class MyList extends LinkedList<StateEvent> {
+        @Override
+        public Iterator<StateEvent> iterator() {
+            return new MyIterator(super.iterator());
         }
     }
 
-    public CountPostStateProcessor getCountPostStateProcessor() {
-        return countPostStateProcessor;
-    }
+    private class MyIterator implements Iterator<StateEvent> {
+        private Iterator<StateEvent> iterator;
 
-    public void setCountPostStateProcessor(CountPostStateProcessor countPostStateProcessor) {
-        this.countPostStateProcessor = countPostStateProcessor;
+        public MyIterator(Iterator<StateEvent> iterator) {
+            this.iterator = iterator;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iterator.hasNext();
+        }
+
+        @Override
+        public StateEvent next() {
+            return iterator.next();
+        }
+
+        @Override
+        public void remove() {
+            iterator.remove();
+            thisStatePostProcessor.pendingStateEventList.clear();
+        }
     }
 
     public void startStateReset() {
@@ -141,12 +118,13 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
         }
     }
 
-    @Override
-    public void updateState() {
-        if (startStateReset) {
-            startStateReset = false;
-            init();
-        }
-        super.updateState();
-    }
+    //
+//    @Override
+//    public void updateState() {
+//        if (startStateReset) {
+//            startStateReset = false;
+//            init();
+//        }
+//        super.updateState();
+//    }
 }

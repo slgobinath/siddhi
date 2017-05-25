@@ -34,11 +34,16 @@ public class PatternMultiProcessStreamReceiver extends StateMultiProcessStreamRe
             queryName) {
         super(streamId, processCount, latencyTracker, queryName);
         eventSequence = new int[processCount];
-        int count = 0;
-        for (int i = eventSequence.length - 1; i >= 0; i--) {
-            eventSequence[count] = i;
-            count++;
+
+        for (int i = 0; i <= eventSequence.length - 1; i++) {
+            eventSequence[i] = i;
         }
+
+//        int count = 0;
+//        for (int i = eventSequence.length - 1; i >= 0; i--) {
+//            eventSequence[count] = i;
+//            count++;
+//        }
     }
 
     public PatternMultiProcessStreamReceiver clone(String key) {
