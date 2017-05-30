@@ -43,14 +43,15 @@ public class LogicalInnerStateRuntime extends StreamInnerStateRuntime {
 
     @Override
     public void setStartState() {
-        innerStateRuntime1.setStartState();
         innerStateRuntime2.setStartState();
+        innerStateRuntime1.setStartState();
     }
 
     @Override
     public void init() {
-        innerStateRuntime1.init();
+
         innerStateRuntime2.init();
+        innerStateRuntime1.init();
     }
 
     @Override

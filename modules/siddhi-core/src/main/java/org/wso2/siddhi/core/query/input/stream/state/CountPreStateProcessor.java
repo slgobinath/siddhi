@@ -18,11 +18,13 @@
 
 package org.wso2.siddhi.core.query.input.stream.state;
 
+import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
+import org.wso2.siddhi.core.event.stream.StreamEvent;
 import org.wso2.siddhi.query.api.execution.query.input.stream.StateInputStream;
 
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +38,7 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
     protected volatile boolean successCondition = false;
     private CountPostStateProcessor countPostStateProcessor;
     private volatile boolean startStateReset = false;
+    private List<StateEvent> preEvents = new ArrayList<>();
 
     public CountPreStateProcessor(int minCount, int maxCount, StateInputStream.Type stateType, List<Map.Entry<Long,
             Set<Integer>>> withinStates) {
@@ -62,53 +65,85 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
     protected Iterator<StateEvent> iterator() {
         List<StateEvent> list;
         if (previousStatePostProcessor != null) {
-            if (thisStatePostProcessor.pendingStateEventList.isEmpty()) {
-                list = previousStatePostProcessor.events();
-            } else {
-                list = new LinkedList<>();
-                StateEvent stateEvent = stateEventCloner.copyStateEvent(thisStatePostProcessor.pendingStateEventList
-                        .get(0));
-                stateEvent.setEvent(stateId, null);
-                list.add(stateEvent);
-            }
+            list = previousStatePostProcessor.events();
         } else {
-            list = new LinkedList<>();
-            if (isStartState) {
+            list = preEvents;
+            if (isStartState && list.isEmpty()) {
                 list.add(stateEventPool.borrowEvent());
             }
         }
         return list.iterator();
     }
 
-    private class MyList extends LinkedList<StateEvent> {
-        @Override
-        public Iterator<StateEvent> iterator() {
-            return new MyIterator(super.iterator());
+    @Override
+    public ComplexEventChunk<StateEvent> processAndReturn(ComplexEventChunk complexEventChunk) {
+
+        // Set the consumed flag to false for every events
+        consumedLastEvent = false;
+        ComplexEventChunk<StateEvent> returnEventChunk = new ComplexEventChunk<StateEvent>(false);
+        complexEventChunk.reset();
+        StreamEvent streamEvent = (StreamEvent) complexEventChunk.next(); //Sure only one will be sent
+        System.out.println(hashCode() + ": " + streamEvent);
+        for (Iterator<StateEvent> iterator = iterator(); iterator.hasNext(); ) {
+            StateEvent stateEvent = iterator.next();
+            if (removeIfNextStateProcessed(stateEvent, iterator, stateId + 1)) {
+                continue;
+            }
+            if (removeIfNextStateProcessed(stateEvent, iterator, stateId + 2)) {
+                continue;
+            }
+            if (withinStates.size() > 0) {
+                if (isExpired(stateEvent, streamEvent)) {
+                    iterator.remove();
+                    continue;
+                }
+            }
+
+            StateEvent eventToProcess = stateEvent;
+            // The start of every does not remove the events from previous processor.
+            // Therefore the state object should not be modified here or later in the next processors.
+            if (startOfEvery) {
+                eventToProcess = stateEventCloner.copyStateEvent(stateEvent);
+            }
+            eventToProcess.addEvent(stateId, streamEventCloner.copyStreamEvent(streamEvent));
+            successCondition = false;
+            process(eventToProcess);
+            if (this.thisLastProcessor.isEventReturned()) {
+                this.thisLastProcessor.clearProcessedEvent();
+                returnEventChunk.add(eventToProcess);
+            }
+            if (stateChanged) {
+                // Remove from the previous processor only if it is not the beginning of an every pattern
+                if (!startOfEvery) {
+                    iterator.remove();
+                }
+            }
+            if (!successCondition) {
+                switch (stateType) {
+                    case PATTERN:
+                        stateEvent.removeLastEvent(stateId);
+                        break;
+                    case SEQUENCE:
+                        stateEvent.removeLastEvent(stateId);
+                        iterator.remove();
+                        break;
+                }
+            }
         }
+        return returnEventChunk;
     }
 
-    private class MyIterator implements Iterator<StateEvent> {
-        private Iterator<StateEvent> iterator;
-
-        public MyIterator(Iterator<StateEvent> iterator) {
-            this.iterator = iterator;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return iterator.hasNext();
-        }
-
-        @Override
-        public StateEvent next() {
-            return iterator.next();
-        }
-
-        @Override
-        public void remove() {
+    private boolean removeIfNextStateProcessed(StateEvent stateEvent, Iterator<StateEvent> iterator, int position) {
+        if (stateEvent.getStreamEvents().length > position && stateEvent.getStreamEvent(position) != null) {
             iterator.remove();
-            thisStatePostProcessor.pendingStateEventList.clear();
+            return true;
         }
+        return false;
+    }
+
+    @Override
+    public void setThisLastProcessor(StreamPostStateProcessor thisLastProcessor) {
+        super.setThisLastProcessor(thisLastProcessor);
     }
 
     public void startStateReset() {
@@ -117,14 +152,4 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
             ((CountPreStateProcessor) countPostStateProcessor.thisStatePreProcessor).startStateReset();
         }
     }
-
-    //
-//    @Override
-//    public void updateState() {
-//        if (startStateReset) {
-//            startStateReset = false;
-//            init();
-//        }
-//        super.updateState();
-//    }
 }

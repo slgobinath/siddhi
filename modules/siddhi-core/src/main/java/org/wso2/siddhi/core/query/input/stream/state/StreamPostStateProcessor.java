@@ -78,12 +78,13 @@ public class StreamPostStateProcessor implements PostStateProcessor {
             complexEventChunk.reset();
             this.isEventReturned = true;
         }
+
         if (endOfEvery) {
             newAndEveryStateEventList.add(stateEvent);
             thisStatePreProcessor.setConsumedLastEvent(!thisStatePreProcessor.startOfEvery);
         } else if (newAndEveryStateEventList.isEmpty() && pendingStateEventList.isEmpty()) {
             newAndEveryStateEventList.add(stateEvent);
-            thisStatePreProcessor.setConsumedLastEvent(true);
+            thisStatePreProcessor.setConsumedLastEvent(false);
         }
     }
 
@@ -182,20 +183,8 @@ public class StreamPostStateProcessor implements PostStateProcessor {
         preStateProcessor.setPreviousStatePostProcessor(this);
     }
 
-    public PreStateProcessor getNextStatePerProcessor() {
-        return nextStatePerProcessor;
-    }
-
-    public PreStateProcessor getNextEveryStatePerProcessor() {
-        return nextEveryStatePerProcessor;
-    }
-
     public void setNextEveryStatePerProcessor(PreStateProcessor nextEveryStatePerProcessor) {
         this.nextEveryStatePerProcessor = nextEveryStatePerProcessor;
-    }
-
-    public PreStateProcessor getThisStatePreProcessor() {
-        return thisStatePreProcessor;
     }
 
     public void setThisStatePreProcessor(StreamPreStateProcessor preStateProcessor) {

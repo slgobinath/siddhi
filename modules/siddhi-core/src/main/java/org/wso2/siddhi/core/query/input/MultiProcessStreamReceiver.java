@@ -172,17 +172,18 @@ public class MultiProcessStreamReceiver extends ProcessStreamReceiver {
     public void receive(long timeStamp, Object[] data) {
         synchronized (this) {
             stabilizeStates();
-            for (int anEventSequence = stopedAt; anEventSequence < eventSequence.length; anEventSequence++) {
+            for (int i = stopedAt; i < eventSequence.length; i++) {
+                int anEventSequence = eventSequence[i];
                 StreamEventConverter aStreamEventConverter = streamEventConverters[anEventSequence];
                 StreamEventPool aStreamEventPool = streamEventPools[anEventSequence];
                 StreamEvent borrowedEvent = aStreamEventPool.borrowEvent();
                 aStreamEventConverter.convertData(timeStamp, data, borrowedEvent);
                 if (process(anEventSequence, borrowedEvent)) {
                     // consumed
-                    stopedAt = anEventSequence + 1;
-                    if (stopedAt == eventSequence.length) {
-                        stopedAt = 0;
-                    }
+//                    stopedAt = anEventSequence + 1;
+//                    if (stopedAt == eventSequence.length) {
+//                        stopedAt = 0;
+//                    }
                     break;
                 }
             }

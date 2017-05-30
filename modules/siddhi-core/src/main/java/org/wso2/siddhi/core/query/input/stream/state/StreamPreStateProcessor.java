@@ -313,7 +313,6 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
         ComplexEventChunk<StateEvent> returnEventChunk = new ComplexEventChunk<StateEvent>(false);
         complexEventChunk.reset();
         StreamEvent streamEvent = (StreamEvent) complexEventChunk.next(); //Sure only one will be sent
-        System.out.println(hashCode() + ": " + streamEvent);
         for (Iterator<StateEvent> iterator = iterator(); iterator.hasNext(); ) {
             StateEvent stateEvent = iterator.next();
             if (withinStates.size() > 0) {

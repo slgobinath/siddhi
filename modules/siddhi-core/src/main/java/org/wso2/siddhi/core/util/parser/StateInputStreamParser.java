@@ -314,13 +314,6 @@ public class StateInputStreamParser {
 //            logicalPreStateProcessor2.setPartnerStatePreProcessor(logicalPreStateProcessor1);
 
 
-            StateElement stateElement1 = ((LogicalStateElement) stateElement).getStreamStateElement1();
-            InnerStateRuntime innerStateRuntime1 = parse(stateElement1, streamDefinitionMap, tableDefinitionMap,
-                    windowDefinitionMap, tableMap, metaStateEvent,
-                    executionPlanContext, variableExpressionExecutors, processStreamReceiverMap,
-                    logicalPreStateProcessor1, logicalPostStateProcessor1, stateType, withinStates, latencyTracker,
-                    queryName);
-
             StateElement stateElement2 = ((LogicalStateElement) stateElement).getStreamStateElement2();
             InnerStateRuntime innerStateRuntime2 = parse(stateElement2, streamDefinitionMap, tableDefinitionMap,
                     windowDefinitionMap, tableMap, metaStateEvent,
@@ -328,6 +321,15 @@ public class StateInputStreamParser {
                     logicalPreStateProcessor2, logicalPostStateProcessor2,
                     stateType, withinStates, latencyTracker,
                     queryName);
+
+            StateElement stateElement1 = ((LogicalStateElement) stateElement).getStreamStateElement1();
+            InnerStateRuntime innerStateRuntime1 = parse(stateElement1, streamDefinitionMap, tableDefinitionMap,
+                    windowDefinitionMap, tableMap, metaStateEvent,
+                    executionPlanContext, variableExpressionExecutors, processStreamReceiverMap,
+                    logicalPreStateProcessor1, logicalPostStateProcessor1, stateType, withinStates, latencyTracker,
+                    queryName);
+
+
 
             LogicalInnerStateRuntime logicalInnerStateRuntime = new LogicalInnerStateRuntime(
                     innerStateRuntime1, innerStateRuntime2, stateType);
@@ -354,11 +356,11 @@ public class StateInputStreamParser {
                         (innerStateRuntime1.getLastProcessor());
             }
 
-            for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime1.getSingleStreamRuntimeList()) {
+            for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime2.getSingleStreamRuntimeList()) {
                 logicalInnerStateRuntime.addStreamRuntime(singleStreamRuntime);
             }
 
-            for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime2.getSingleStreamRuntimeList()) {
+            for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime1.getSingleStreamRuntimeList()) {
                 logicalInnerStateRuntime.addStreamRuntime(singleStreamRuntime);
             }
 

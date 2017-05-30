@@ -478,6 +478,84 @@ public class PatternTestCase {
                 "define stream Stream (symbol string, price float, volume int); ";
         String query = "" +
                 "@info(name = 'query1') " +
+                "from every (e1=Stream[price > 20] -> e2=Stream[symbol == e1.symbol]) " +
+                "select e1.volume as volume1, e2.volume as volume2 " +
+                "insert into OutputStream ;";
+
+        ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(streams + query);
+
+        executionPlanRuntime.addCallback("query1", new QueryCallback() {
+            @Override
+            public void receive(long timeStamp, Event[] inEvents, Event[] removeEvents) {
+                EventPrinter.print(timeStamp, inEvents, removeEvents);
+                if (inEvents != null) {
+                    for (Event event : inEvents) {
+                        inEventCount++;
+                        switch (inEventCount) {
+                            case 1:
+                                Assert.assertArrayEquals(new Object[]{100, 200}, event.getData());
+                                break;
+                            case 2:
+                                Assert.assertArrayEquals(new Object[]{300, 400}, event.getData());
+                                break;
+                            case 3:
+                                Assert.assertArrayEquals(new Object[]{500, 600}, event.getData());
+                                break;
+                            case 4:
+                                Assert.assertArrayEquals(new Object[]{700, 800}, event.getData());
+                                break;
+                            default:
+                                Assert.assertSame(10, inEventCount);
+                        }
+                    }
+                    eventArrived = true;
+                }
+                if (removeEvents != null) {
+                    removeEventCount = removeEventCount + removeEvents.length;
+                }
+                eventArrived = true;
+            }
+
+        });
+
+        InputHandler stream = executionPlanRuntime.getInputHandler("Stream");
+
+        executionPlanRuntime.start();
+
+        stream.send(new Object[]{"IBM", 75.6f, 100});
+        stream.send(new Object[]{"IBM", 75.6f, 200});
+        stream.send(new Object[]{"IBM", 75.6f, 300});
+        stream.send(new Object[]{"GOOG", 21f, 91});
+        stream.send(new Object[]{"IBM", 75.6f, 400});
+        stream.send(new Object[]{"IBM", 75.6f, 500});
+
+        stream.send(new Object[]{"GOOG", 21f, 92});
+
+        stream.send(new Object[]{"IBM", 75.6f, 600});
+        stream.send(new Object[]{"IBM", 75.6f, 700});
+        stream.send(new Object[]{"IBM", 75.6f, 800});
+        stream.send(new Object[]{"GOOG", 21f, 93});
+        stream.send(new Object[]{"IBM", 75.6f, 900});
+
+        Thread.sleep(100);
+
+        Assert.assertEquals("Number of success events", 4, inEventCount);
+        Assert.assertEquals("Number of remove events", 0, removeEventCount);
+        Assert.assertEquals("Event arrived", true, eventArrived);
+
+        executionPlanRuntime.shutdown();
+    }
+
+    @Test
+    public void testQuery9() throws InterruptedException {
+        log.info("testPatternEvery3 - OUT 1");
+
+        SiddhiManager siddhiManager = new SiddhiManager();
+
+        String streams = "" +
+                "define stream Stream (symbol string, price float, volume int); ";
+        String query = "" +
+                "@info(name = 'query1') " +
                 "from every e1=Stream[price > 20] -> e2=Stream[symbol == e1.symbol] " +
                 "select e1.volume as volume1, e2.volume as volume2 " +
                 "insert into OutputStream ;";

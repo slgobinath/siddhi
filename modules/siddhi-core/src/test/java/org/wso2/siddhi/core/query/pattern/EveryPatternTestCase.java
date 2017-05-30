@@ -235,7 +235,7 @@ public class EveryPatternTestCase {
                 if (inEvents != null) {
                     for (Event event : inEvents) {
                         inEventCount++;
-//                        Assert.assertArrayEquals(new Object[]{55.6f, 54f, 57.7f}, event.getData());
+                        Assert.assertArrayEquals(new Object[]{55.6f, 54f, 57.7f}, event.getData());
                     }
                     eventArrived = true;
                 }
@@ -255,8 +255,6 @@ public class EveryPatternTestCase {
         stream1.send(new Object[]{"WSO2", 55.6f, 100});
         Thread.sleep(100);
         stream1.send(new Object[]{"GOOG", 54f, 100});
-        Thread.sleep(100);
-        stream1.send(new Object[]{"ORACLE", 56f, 100});
         Thread.sleep(100);
         stream2.send(new Object[]{"IBM", 57.7f, 100});
         Thread.sleep(100);
