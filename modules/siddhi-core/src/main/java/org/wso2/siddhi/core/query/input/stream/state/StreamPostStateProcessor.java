@@ -27,15 +27,13 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Created on 12/17/14.
+ * Created on 12/17/14. Make this snapshotable.
  */
 public class StreamPostStateProcessor implements PostStateProcessor {
     protected PreStateProcessor nextStatePerProcessor;
-    protected PreStateProcessor nextEveryStatePerProcessor;
     protected StreamPreStateProcessor thisStatePreProcessor;
     protected Processor nextProcessor;
     protected int stateId;
-    protected CountPreStateProcessor callbackPreStateProcessor;
     protected boolean isEventReturned;
 
     /**
@@ -44,7 +42,7 @@ public class StreamPostStateProcessor implements PostStateProcessor {
     protected List<StateEvent> newAndEveryStateEventList = new LinkedList<>();
 
     /**
-     * List of processed events moved from {@link StreamPreStateProcessor#newAndEveryStateEventList}.
+     * List of processed events moved from {@link StreamPostStateProcessor#newAndEveryStateEventList}.
      */
     protected List<StateEvent> pendingStateEventList = new LinkedList<>();
 
@@ -172,7 +170,8 @@ public class StreamPostStateProcessor implements PostStateProcessor {
     }
 
     protected void cloneProperties(StreamPostStateProcessor streamPostStateProcessor) {
-        streamPostStateProcessor.stateId = stateId;
+        streamPostStateProcessor.stateId = this.stateId;
+        streamPostStateProcessor.endOfEvery = this.endOfEvery;
     }
 
     @Override
@@ -181,10 +180,6 @@ public class StreamPostStateProcessor implements PostStateProcessor {
 
         // Set this as the previous post state processor
         preStateProcessor.setPreviousStatePostProcessor(this);
-    }
-
-    public void setNextEveryStatePerProcessor(PreStateProcessor nextEveryStatePerProcessor) {
-        this.nextEveryStatePerProcessor = nextEveryStatePerProcessor;
     }
 
     public void setThisStatePreProcessor(StreamPreStateProcessor preStateProcessor) {
@@ -197,10 +192,5 @@ public class StreamPostStateProcessor implements PostStateProcessor {
 
     public void setStateId(int stateId) {
         this.stateId = stateId;
-    }
-
-    @Override
-    public void setCallbackPreStateProcessor(CountPreStateProcessor callbackPreStateProcessor) {
-        this.callbackPreStateProcessor = callbackPreStateProcessor;
     }
 }

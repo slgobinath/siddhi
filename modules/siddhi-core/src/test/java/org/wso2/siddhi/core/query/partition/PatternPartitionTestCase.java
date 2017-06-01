@@ -1564,7 +1564,7 @@ public class PatternPartitionTestCase {
                         removeEventCount.incrementAndGet();
                     } else {
                         inEventCount.incrementAndGet();
-                        Assert.assertArrayEquals(new Object[]{"WSO2", 72.7f, 72.7f}, event.getData());
+                        Assert.assertArrayEquals(new Object[]{"WSO2", 72.7f, 75.7f}, event.getData());
                     }
                     eventArrived = true;
                 }

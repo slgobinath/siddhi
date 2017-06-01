@@ -36,8 +36,6 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
     private final int minCount;
     private final int maxCount;
     protected volatile boolean successCondition = false;
-    private CountPostStateProcessor countPostStateProcessor;
-    private volatile boolean startStateReset = false;
     private List<StateEvent> preEvents = new ArrayList<>();
 
     public CountPreStateProcessor(int minCount, int maxCount, StateInputStream.Type stateType, List<Map.Entry<Long,
@@ -83,7 +81,6 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
         ComplexEventChunk<StateEvent> returnEventChunk = new ComplexEventChunk<StateEvent>(false);
         complexEventChunk.reset();
         StreamEvent streamEvent = (StreamEvent) complexEventChunk.next(); //Sure only one will be sent
-        System.out.println(hashCode() + ": " + streamEvent);
         for (Iterator<StateEvent> iterator = iterator(); iterator.hasNext(); ) {
             StateEvent stateEvent = iterator.next();
             if (removeIfNextStateProcessed(stateEvent, iterator, stateId + 1)) {
@@ -144,12 +141,5 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
     @Override
     public void setThisLastProcessor(StreamPostStateProcessor thisLastProcessor) {
         super.setThisLastProcessor(thisLastProcessor);
-    }
-
-    public void startStateReset() {
-        startStateReset = true;
-        if (thisStatePostProcessor.callbackPreStateProcessor != null) {
-            ((CountPreStateProcessor) countPostStateProcessor.thisStatePreProcessor).startStateReset();
-        }
     }
 }

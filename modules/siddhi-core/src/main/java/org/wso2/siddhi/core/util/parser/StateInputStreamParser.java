@@ -245,8 +245,6 @@ public class StateInputStreamParser {
                 everyInnerStateRuntime.addStreamRuntime(singleStreamRuntime);
             }
             if (stateType == StateInputStream.Type.PATTERN) {
-                everyInnerStateRuntime.getLastProcessor().setNextEveryStatePerProcessor(everyInnerStateRuntime
-                                                                                                .getFirstProcessor());
                 // Mark the first processor as the start of every
                 everyInnerStateRuntime.getFirstProcessor().setStartOfEvery(true);
 
@@ -272,17 +270,7 @@ public class StateInputStreamParser {
             LogicalPostStateProcessor logicalPostStateProcessor = new LogicalPostStateProcessor(type);
 
             logicalPreStateProcessor.setThisStatePostProcessor(logicalPostStateProcessor);
-
-//            LogicalPreStateProcessor logicalPreStateProcessor1 = new LogicalPreStateProcessor(type, stateType,
-//                                                                                              withinStates);
-//            logicalPreStateProcessor1.init(executionPlanContext, queryName);
-//            LogicalPostStateProcessor logicalPostStateProcessor1 = new LogicalPostStateProcessor(type);
-//
-//            LogicalPreStateProcessor logicalPreStateProcessor2 = new LogicalPreStateProcessor(type, stateType,
-//                                                                                              withinStates);
-//            logicalPreStateProcessor2.init(executionPlanContext, queryName);
-//            LogicalPostStateProcessor logicalPostStateProcessor2 = new LogicalPostStateProcessor(type);
-
+            logicalPreStateProcessor.init(executionPlanContext, queryName);
 
             StreamPreStateProcessor logicalPreStateProcessor1 = new StreamPreStateProcessor(stateType, withinStates);
             logicalPreStateProcessor1.init(executionPlanContext, queryName);
@@ -303,15 +291,6 @@ public class StateInputStreamParser {
             if (stateElement.getWithin() != null) {
                 withinStates.remove(0);
             }
-
-//            logicalPostStateProcessor1.setPartnerPreStateProcessor(logicalPreStateProcessor2);
-//            logicalPostStateProcessor2.setPartnerPreStateProcessor(logicalPreStateProcessor1);
-//
-//            logicalPostStateProcessor1.setPartnerPostStateProcessor(logicalPostStateProcessor2);
-//            logicalPostStateProcessor2.setPartnerPostStateProcessor(logicalPostStateProcessor1);
-//
-//            logicalPreStateProcessor1.setPartnerStatePreProcessor(logicalPreStateProcessor2);
-//            logicalPreStateProcessor2.setPartnerStatePreProcessor(logicalPreStateProcessor1);
 
 
             StateElement stateElement2 = ((LogicalStateElement) stateElement).getStreamStateElement2();

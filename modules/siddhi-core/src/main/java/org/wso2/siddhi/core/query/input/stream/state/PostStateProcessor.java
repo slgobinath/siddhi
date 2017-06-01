@@ -32,10 +32,6 @@ public interface PostStateProcessor extends Processor {
 
     void setNextStatePreProcessor(PreStateProcessor nextStatePerProcessor);
 
-    void setNextEveryStatePerProcessor(PreStateProcessor nextEveryStatePerProcessor);
-
-    void setCallbackPreStateProcessor(CountPreStateProcessor callbackPreStateProcessor);
-
     PostStateProcessor cloneProcessor(String key);
 
     /**

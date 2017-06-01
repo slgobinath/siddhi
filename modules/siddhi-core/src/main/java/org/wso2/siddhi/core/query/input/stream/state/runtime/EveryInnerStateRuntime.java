@@ -58,8 +58,6 @@ public class EveryInnerStateRuntime extends StreamInnerStateRuntime {
         everyInnerStateRuntime.lastProcessor = clonedStreamInnerStateRuntime.getLastProcessor();
         everyInnerStateRuntime.singleStreamRuntimeList.addAll(clonedStreamInnerStateRuntime
                 .getSingleStreamRuntimeList());
-        everyInnerStateRuntime.getLastProcessor().setNextEveryStatePerProcessor(everyInnerStateRuntime
-                .getFirstProcessor());
         return everyInnerStateRuntime;
     }
 }

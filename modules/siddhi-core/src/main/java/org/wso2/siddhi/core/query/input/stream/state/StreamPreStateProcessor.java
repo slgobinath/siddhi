@@ -55,11 +55,8 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
     protected Processor nextProcessor;
 
     protected ComplexEventChunk<StateEvent> currentStateEventChunk = new ComplexEventChunk<StateEvent>(false);
-    protected LinkedList<StateEvent> pendingStateEventList = new LinkedList<StateEvent>();
-    protected LinkedList<StateEvent> newAndEveryStateEventList = new LinkedList<StateEvent>();
 
     protected StateEventPool stateEventPool;
-    //  private StreamEventPool streamEventPool;
     protected StreamEventCloner streamEventCloner;
     protected StateEventCloner stateEventCloner;
     protected StreamEventPool streamEventPool;
@@ -225,6 +222,9 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
         streamPreStateProcessor.streamEventCloner = this.streamEventCloner;
         streamPreStateProcessor.stateEventCloner = this.stateEventCloner;
         streamPreStateProcessor.streamEventPool = this.streamEventPool;
+        streamPreStateProcessor.startOfEvery = this.startOfEvery;
+        streamPreStateProcessor.isStartState = this.isStartState;
+        streamPreStateProcessor.stateType = this.stateType;
     }
 
     public void stateChanged() {
@@ -268,12 +268,7 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
 
     @Override
     public void resetState() {
-        pendingStateEventList.clear();
-        if (isStartState && newAndEveryStateEventList.isEmpty()) {
-            //        if (isStartState && stateType == StateInputStream.Type.SEQUENCE && newAndEveryStateEventList
-            // .isEmpty()) {
-            init();
-        }
+
     }
 
     @Override
@@ -347,9 +342,6 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
                     case SEQUENCE:
                         stateEvent.setEvent(stateId, null);
                         iterator.remove();
-                        if (thisStatePostProcessor.callbackPreStateProcessor != null) {
-                            thisStatePostProcessor.callbackPreStateProcessor.startStateReset();
-                        }
                         break;
                 }
             }
@@ -370,8 +362,8 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
     public Map<String, Object> currentState() {
         Map<String, Object> state = new HashMap<>();
         state.put("CurrentStateEventChunk", currentStateEventChunk.getFirst());
-        state.put("PendingStateEventList", pendingStateEventList);
-        state.put("NewAndEveryStateEventList", newAndEveryStateEventList);
+//        state.put("PendingStateEventList", pendingStateEventList);
+//        state.put("NewAndEveryStateEventList", newAndEveryStateEventList);
         return state;
     }
 
@@ -379,8 +371,8 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
     public void restoreState(Map<String, Object> state) {
         currentStateEventChunk.clear();
         currentStateEventChunk.add((StateEvent) state.get("FirstEvent"));
-        pendingStateEventList = (LinkedList<StateEvent>) state.get("PendingStateEventList");
-        newAndEveryStateEventList = (LinkedList<StateEvent>) state.get("NewAndEveryStateEventList");
+//        pendingStateEventList = (LinkedList<StateEvent>) state.get("PendingStateEventList");
+//        newAndEveryStateEventList = (LinkedList<StateEvent>) state.get("NewAndEveryStateEventList");
     }
 
     @Override
