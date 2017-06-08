@@ -166,6 +166,7 @@ public class StateInputStreamParser {
             singleStreamRuntime.setProcessorChain(streamPreStateProcessor);
             if (streamPostStateProcessor == null) {
                 streamPostStateProcessor = new StreamPostStateProcessor();
+                streamPostStateProcessor.init(executionPlanContext, queryName);
             }
             streamPostStateProcessor.setStateId(stateIndex);
             singleStreamRuntime.getProcessorChain().setToLast(streamPostStateProcessor);
@@ -267,6 +268,7 @@ public class StateInputStreamParser {
                     withinStates);
 
             LogicalPostStateProcessor logicalPostStateProcessor = new LogicalPostStateProcessor(type);
+            logicalPostStateProcessor.init(executionPlanContext, queryName);
 
             logicalPreStateProcessor.setThisStatePostProcessor(logicalPostStateProcessor);
             logicalPreStateProcessor.init(executionPlanContext, queryName);
@@ -275,11 +277,13 @@ public class StateInputStreamParser {
             logicalPreStateProcessor1.init(executionPlanContext, queryName);
 
             StreamPostStateProcessor logicalPostStateProcessor1 = new StreamPostStateProcessor();
+            logicalPostStateProcessor1.init(executionPlanContext, queryName);
 
             StreamPreStateProcessor logicalPreStateProcessor2 = new StreamPreStateProcessor(stateType, withinStates);
             logicalPreStateProcessor2.init(executionPlanContext, queryName);
 
             StreamPostStateProcessor logicalPostStateProcessor2 = new StreamPostStateProcessor();
+            logicalPostStateProcessor2.init(executionPlanContext, queryName);
 
             logicalPreStateProcessor.addStreamPreStateProcessor(logicalPreStateProcessor1);
             logicalPreStateProcessor.addStreamPreStateProcessor(logicalPreStateProcessor2);
@@ -366,6 +370,7 @@ public class StateInputStreamParser {
                                                                                        withinStates);
             countPreStateProcessor.init(executionPlanContext, queryName);
             CountPostStateProcessor countPostStateProcessor = new CountPostStateProcessor(minCount, maxCount);
+            countPostStateProcessor.init(executionPlanContext, queryName);
 
             if (stateElement.getWithin() != null) {
                 withinStates.remove(0);

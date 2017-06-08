@@ -38,12 +38,14 @@ public class CountPostStateProcessor extends StreamPostStateProcessor {
         this.maxCount = maxCount;
     }
 
+    @Override
     public PostStateProcessor cloneProcessor(String key) {
         CountPostStateProcessor countPostStateProcessor = new CountPostStateProcessor(minCount, maxCount);
         cloneProperties(countPostStateProcessor);
         return countPostStateProcessor;
     }
 
+    @Override
     protected void process(StateEvent stateEvent, ComplexEventChunk complexEventChunk) {
 
         ((CountPreStateProcessor) thisStatePreProcessor).successCondition = true;

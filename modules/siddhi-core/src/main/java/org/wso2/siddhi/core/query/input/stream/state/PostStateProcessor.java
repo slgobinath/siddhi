@@ -20,18 +20,35 @@ package org.wso2.siddhi.core.query.input.stream.state;
 
 import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.query.processor.Processor;
+import org.wso2.siddhi.core.util.snapshot.Snapshotable;
 
 import java.util.List;
 
 /**
- * Created on 12/17/14.
+ * A super interface which provides the template of all the post state processors.
  */
-public interface PostStateProcessor extends Processor {
+public interface PostStateProcessor extends Processor, Snapshotable {
 
+    /**
+     * Get the state id of this processor.
+     *
+     * @return the state id
+     */
     int getStateId();
 
+    /**
+     * Set the next state processor to this {@link PostStateProcessor}
+     *
+     * @param nextStatePerProcessor the next processor
+     */
     void setNextStatePreProcessor(PreStateProcessor nextStatePerProcessor);
 
+    /**
+     * Clone the processor.
+     *
+     * @param key partition key
+     * @return
+     */
     PostStateProcessor cloneProcessor(String key);
 
     /**

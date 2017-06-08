@@ -18,9 +18,6 @@
 
 package org.wso2.siddhi.core.query.input.stream.state.runtime;
 
-import org.wso2.siddhi.core.query.input.stream.state.CountPostStateProcessor;
-import org.wso2.siddhi.core.query.input.stream.state.CountPreStateProcessor;
-
 /**
  * Created on 12/19/14.
  */
@@ -40,11 +37,6 @@ public class CountInnerStateRuntime extends StreamInnerStateRuntime {
     public InnerStateRuntime clone(String key) {
         StreamInnerStateRuntime clonedStreamInnerStateRuntime = (StreamInnerStateRuntime) streamInnerStateRuntime
                 .clone(key);
-        CountPreStateProcessor countPreStateProcessor = (CountPreStateProcessor) clonedStreamInnerStateRuntime
-                .getFirstProcessor();
-        CountPostStateProcessor countPostStateProcessor = (CountPostStateProcessor) clonedStreamInnerStateRuntime
-                .getLastProcessor();
-//        countPreStateProcessor.setCountPostStateProcessor(countPostStateProcessor);
         return new CountInnerStateRuntime(clonedStreamInnerStateRuntime);
 
     }
