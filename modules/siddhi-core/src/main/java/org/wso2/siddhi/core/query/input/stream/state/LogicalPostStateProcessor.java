@@ -84,6 +84,7 @@ public class LogicalPostStateProcessor extends StreamPostStateProcessor {
         if (logicalType == LogicalStateElement.Type.OR) {
             for (StreamPostStateProcessor processor : streamPostStateProcessors) {
                 if (!processor.newAndEveryStateEventList.isEmpty()) {
+                    processor.newAndEveryStateEventList.clear();
                     return true;
                 }
             }

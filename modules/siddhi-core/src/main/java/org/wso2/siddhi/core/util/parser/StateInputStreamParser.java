@@ -244,13 +244,12 @@ public class StateInputStreamParser {
             for (SingleStreamRuntime singleStreamRuntime : innerStateRuntime.getSingleStreamRuntimeList()) {
                 everyInnerStateRuntime.addStreamRuntime(singleStreamRuntime);
             }
-            if (stateType == StateInputStream.Type.PATTERN) {
-                // Mark the first processor as the start of every
-                everyInnerStateRuntime.getFirstProcessor().setStartOfEvery(true);
 
-                // Mark the last processor as the end of every
-                everyInnerStateRuntime.getLastProcessor().setEndOfEvery(true);
-            }
+            // Mark the first processor as the start of every
+            everyInnerStateRuntime.getFirstProcessor().setStartOfEvery(true);
+
+            // Mark the last processor as the end of every
+            everyInnerStateRuntime.getLastProcessor().setEndOfEvery(true);
             return everyInnerStateRuntime;
 
         } else if (stateElement instanceof LogicalStateElement) {

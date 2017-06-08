@@ -66,6 +66,9 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
             list = previousStatePostProcessor.events();
         } else {
             list = preEvents;
+            if (stateType == StateInputStream.Type.SEQUENCE && (!startOfEvery || maxCount == 1)) {
+                list.clear();
+            }
             if (isStartState && list.isEmpty()) {
                 list.add(stateEventPool.borrowEvent());
             }
@@ -78,7 +81,7 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
 
         // Set the consumed flag to false for every events
         consumedLastEvent = false;
-        ComplexEventChunk<StateEvent> returnEventChunk = new ComplexEventChunk<StateEvent>(false);
+        ComplexEventChunk<StateEvent> returnEventChunk = new ComplexEventChunk<>(false);
         complexEventChunk.reset();
         StreamEvent streamEvent = (StreamEvent) complexEventChunk.next(); //Sure only one will be sent
         for (Iterator<StateEvent> iterator = iterator(); iterator.hasNext(); ) {
@@ -99,7 +102,7 @@ public class CountPreStateProcessor extends StreamPreStateProcessor {
             StateEvent eventToProcess = stateEvent;
             // The start of every does not remove the events from previous processor.
             // Therefore the state object should not be modified here or later in the next processors.
-            if (startOfEvery) {
+            if (startOfEvery && stateType == StateInputStream.Type.PATTERN) {
                 eventToProcess = stateEventCloner.copyStateEvent(stateEvent);
             }
             eventToProcess.addEvent(stateId, streamEventCloner.copyStreamEvent(streamEvent));

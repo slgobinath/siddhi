@@ -341,7 +341,6 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
                         break;
                     case SEQUENCE:
                         stateEvent.setEvent(stateId, null);
-                        iterator.remove();
                         break;
                 }
             }

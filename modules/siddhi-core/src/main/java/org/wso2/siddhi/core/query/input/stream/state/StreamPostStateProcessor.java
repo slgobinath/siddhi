@@ -22,6 +22,7 @@ import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.event.stream.StreamEvent;
 import org.wso2.siddhi.core.query.processor.Processor;
+import org.wso2.siddhi.query.api.execution.query.input.stream.StateInputStream;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -77,10 +78,18 @@ public class StreamPostStateProcessor implements PostStateProcessor {
             this.isEventReturned = true;
         }
 
-        if (endOfEvery) {
-            newAndEveryStateEventList.add(stateEvent);
-            thisStatePreProcessor.setConsumedLastEvent(!thisStatePreProcessor.startOfEvery);
-        } else if (newAndEveryStateEventList.isEmpty() && pendingStateEventList.isEmpty()) {
+        if (thisStatePreProcessor.stateType == StateInputStream.Type.PATTERN) {
+            if (endOfEvery) {
+                newAndEveryStateEventList.add(stateEvent);
+                thisStatePreProcessor.setConsumedLastEvent(!thisStatePreProcessor.startOfEvery);
+            } else if (newAndEveryStateEventList.isEmpty() && pendingStateEventList.isEmpty()) {
+                newAndEveryStateEventList.add(stateEvent);
+                thisStatePreProcessor.setConsumedLastEvent(false);
+            }
+        } else {
+            // SEQUENCE
+            pendingStateEventList.clear();
+            newAndEveryStateEventList.clear();
             newAndEveryStateEventList.add(stateEvent);
             thisStatePreProcessor.setConsumedLastEvent(false);
         }
