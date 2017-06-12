@@ -105,6 +105,10 @@ public class StreamPostStateProcessor implements PostStateProcessor {
             } else if (newAndEveryStateEventList.isEmpty() && pendingStateEventList.isEmpty()) {
                 newAndEveryStateEventList.add(stateEvent);
                 thisStatePreProcessor.setConsumedLastEvent(false);
+            } else if (thisStatePreProcessor.previousStatePostProcessor != null && (
+                    (StreamPostStateProcessor) thisStatePreProcessor.previousStatePostProcessor).endOfEvery) {
+                newAndEveryStateEventList.add(stateEvent);
+                thisStatePreProcessor.setConsumedLastEvent(false);
             }
         } else {
             // SEQUENCE
