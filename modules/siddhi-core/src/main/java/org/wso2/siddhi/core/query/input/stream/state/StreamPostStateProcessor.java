@@ -18,14 +18,17 @@
 
 package org.wso2.siddhi.core.query.input.stream.state;
 
+import org.wso2.siddhi.core.config.ExecutionPlanContext;
 import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.event.stream.StreamEvent;
 import org.wso2.siddhi.core.query.processor.Processor;
 import org.wso2.siddhi.query.api.execution.query.input.stream.StateInputStream;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created on 12/17/14. Make this snapshotable.
@@ -36,6 +39,9 @@ public class StreamPostStateProcessor implements PostStateProcessor {
     protected Processor nextProcessor;
     protected int stateId;
     protected boolean isEventReturned;
+    protected String elementId;
+    protected ExecutionPlanContext executionPlanContext;
+    protected String queryName;
 
     /**
      * List of newly arrived process events.
@@ -51,6 +57,20 @@ public class StreamPostStateProcessor implements PostStateProcessor {
      * A flag indicates whether this is the last processor in an every pattern.
      */
     protected boolean endOfEvery = false;
+
+    public void init(ExecutionPlanContext executionPlanContext, String queryName) {
+        this.executionPlanContext = executionPlanContext;
+        this.queryName = queryName;
+        if (elementId == null) {
+            this.elementId = "StreamPreStateProcessor-" + executionPlanContext.getElementIdGenerator().createNewId();
+        }
+        executionPlanContext.getSnapshotService().addSnapshotable(queryName, this);
+    }
+
+    @Override
+    public String getElementId() {
+        return elementId;
+    }
 
     /**
      * Process the handed StreamEvent
@@ -145,9 +165,10 @@ public class StreamPostStateProcessor implements PostStateProcessor {
      */
     @Override
     public PostStateProcessor cloneProcessor(String key) {
-        StreamPostStateProcessor streamPostStateProcessor = new StreamPostStateProcessor();
-        cloneProperties(streamPostStateProcessor);
-        return streamPostStateProcessor;
+        StreamPostStateProcessor processor = new StreamPostStateProcessor();
+        cloneProperties(processor);
+        processor.init(executionPlanContext, queryName);
+        return processor;
     }
 
     /**
@@ -201,5 +222,19 @@ public class StreamPostStateProcessor implements PostStateProcessor {
 
     public void setStateId(int stateId) {
         this.stateId = stateId;
+    }
+
+    @Override
+    public Map<String, Object> currentState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("PendingStateEventList", pendingStateEventList);
+        state.put("NewAndEveryStateEventList", newAndEveryStateEventList);
+        return state;
+    }
+
+    @Override
+    public void restoreState(Map<String, Object> state) {
+        pendingStateEventList = (LinkedList<StateEvent>) state.get("PendingStateEventList");
+        newAndEveryStateEventList = (LinkedList<StateEvent>) state.get("NewAndEveryStateEventList");
     }
 }

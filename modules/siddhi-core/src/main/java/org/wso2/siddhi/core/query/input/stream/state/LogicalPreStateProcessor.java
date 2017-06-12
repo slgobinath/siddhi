@@ -29,23 +29,32 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by gobinath on 5/21/17.
+ * The processor that comes before the individual {@link StreamPreStateProcessor}s of a logical pattern.
+ * This processor sets the {@link #previousStatePostProcessor} of all individual processors.
  */
 public class LogicalPreStateProcessor extends StreamPreStateProcessor {
 
+    /**
+     * Logical type of the processor.
+     */
     private LogicalStateElement.Type logicalType;
 
+    /**
+     * {@link StreamPreStateProcessor}s which are part of the logical pattern.
+     */
     private List<StreamPreStateProcessor> streamPreStateProcessors = new LinkedList<>();
 
-    public LogicalPreStateProcessor(LogicalStateElement.Type type, StateInputStream.Type stateType, List<Map
-            .Entry<Long, Set<Integer>>> withinStates) {
+    /**
+     * Create a LogicalPreStateProcessor instance.
+     *
+     * @param logicalType  the logical type
+     * @param stateType    the state type
+     * @param withinStates the within conditions
+     */
+    public LogicalPreStateProcessor(LogicalStateElement.Type logicalType, StateInputStream.Type stateType,
+                                    List<Map.Entry<Long, Set<Integer>>> withinStates) {
         super(stateType, withinStates);
-        this.logicalType = type;
-    }
-
-    @Override
-    public void init() {
-        super.init();
+        this.logicalType = logicalType;
     }
 
     /**
@@ -56,37 +65,63 @@ public class LogicalPreStateProcessor extends StreamPreStateProcessor {
      */
     @Override
     public PreStateProcessor cloneProcessor(String key) {
-        LogicalPreStateProcessor logicalPreStateProcessor = new LogicalPreStateProcessor(logicalType, stateType,
-                withinStates);
-        cloneProperties(logicalPreStateProcessor, key);
-        logicalPreStateProcessor.init(executionPlanContext, queryName);
-        return logicalPreStateProcessor;
+        LogicalPreStateProcessor processor = new LogicalPreStateProcessor(logicalType, stateType, withinStates);
+        cloneProperties(processor, key);
+        processor.init(executionPlanContext, queryName);
+        return processor;
     }
 
+    /**
+     * Set the previous {@link PostStateProcessor} of the inner {@link StreamPreStateProcessor}s.
+     *
+     * @param postStateProcessor the previous PostStateProcessor
+     */
     @Override
     public void setPreviousStatePostProcessor(PostStateProcessor postStateProcessor) {
+        // Set the previousStatePostProcessor to this processor
         super.setPreviousStatePostProcessor(postStateProcessor);
 
         if (logicalType == LogicalStateElement.Type.OR) {
+            // In OR operation all the processors are parallel to each other
+            // So they share the same previousStatePostProcessor.
+            //                              |->  streamPreStateProcessor1
+            // previousStatePostProcessor - |->  streamPreStateProcessor2
+            //                              |->  streamPreStateProcessor3
             for (StreamPreStateProcessor processor : streamPreStateProcessors) {
                 processor.setPreviousStatePostProcessor(getPreviousStatePostProcessor());
             }
         } else {
-            // AND
+            // In AND operation, processors are aligned linearly.
+            // previousStatePostProcessor -> streamPreStateProcessor1 -> streamPreStateProcessor2 ->
+            // streamPreStateProcessor3
             streamPreStateProcessors.get(0).setPreviousStatePostProcessor(getPreviousStatePostProcessor());
-            for (int i = 1; i < streamPreStateProcessors.size(); i++) {
+            final int noOfProcessors = streamPreStateProcessors.size();
+            for (int i = 1; i < noOfProcessors; i++) {
                 streamPreStateProcessors.get(i).setPreviousStatePostProcessor(streamPreStateProcessors.get(i - 1)
                         .thisStatePostProcessor);
             }
         }
     }
 
+    /**
+     * Add the {@link StreamPreStateProcessor} to the logical pattern.
+     *
+     * @param processor processor of the logical pattern
+     */
     public void addStreamPreStateProcessor(StreamPreStateProcessor processor) {
         this.streamPreStateProcessors.add(processor);
     }
 
+    /**
+     * {@link LogicalPreStateProcessor} is meant to share the previous processor the inner processors of the logical
+     * pattern. This processor is not intended to process any events.
+     *
+     * @param complexEventChunk
+     * @return
+     * @throws RuntimeException always throws an exception
+     */
     @Override
     public ComplexEventChunk<StateEvent> processAndReturn(ComplexEventChunk complexEventChunk) {
-        throw new RuntimeException("Cannot handle");
+        throw new RuntimeException("LogicalPreStateProcessor cannot process any events");
     }
 }
