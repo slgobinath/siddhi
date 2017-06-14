@@ -102,13 +102,13 @@ public class StreamPostStateProcessor implements PostStateProcessor {
             if (endOfEvery) {
                 newAndEveryStateEventList.add(stateEvent);
                 thisStatePreProcessor.setConsumedLastEvent(!thisStatePreProcessor.startOfEvery);
-            } else if (newAndEveryStateEventList.isEmpty() && pendingStateEventList.isEmpty()) {
-                newAndEveryStateEventList.add(stateEvent);
-                thisStatePreProcessor.setConsumedLastEvent(false);
             } else if (thisStatePreProcessor.previousStatePostProcessor != null && (
                     (StreamPostStateProcessor) thisStatePreProcessor.previousStatePostProcessor).endOfEvery) {
                 newAndEveryStateEventList.add(stateEvent);
                 thisStatePreProcessor.setConsumedLastEvent(false);
+            } else if (newAndEveryStateEventList.isEmpty() && pendingStateEventList.isEmpty()) {
+                newAndEveryStateEventList.add(stateEvent);
+                thisStatePreProcessor.setConsumedLastEvent(true);
             }
         } else {
             // SEQUENCE
@@ -211,7 +211,6 @@ public class StreamPostStateProcessor implements PostStateProcessor {
     @Override
     public void setNextStatePreProcessor(PreStateProcessor preStateProcessor) {
         this.nextStatePerProcessor = preStateProcessor;
-
         // Set this as the previous post state processor
         preStateProcessor.setPreviousStatePostProcessor(this);
     }

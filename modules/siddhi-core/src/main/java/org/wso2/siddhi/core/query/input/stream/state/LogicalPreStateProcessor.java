@@ -91,14 +91,12 @@ public class LogicalPreStateProcessor extends StreamPreStateProcessor {
                 processor.setPreviousStatePostProcessor(getPreviousStatePostProcessor());
             }
         } else {
-            // In AND operation, processors are aligned linearly.
-            // previousStatePostProcessor -> streamPreStateProcessor1 -> streamPreStateProcessor2 ->
-            // streamPreStateProcessor3
-            streamPreStateProcessors.get(0).setPreviousStatePostProcessor(getPreviousStatePostProcessor());
-            final int noOfProcessors = streamPreStateProcessors.size();
-            for (int i = 1; i < noOfProcessors; i++) {
-                streamPreStateProcessors.get(i).setPreviousStatePostProcessor(streamPreStateProcessors.get(i - 1)
-                        .thisStatePostProcessor);
+            // In AND operation, processors are aligned dynamically.
+            // previousStatePostProcessor -> streamPreStateProcessor(which receives the event first) ->
+            // streamPreStateProcessor(which receives the event next) ->
+
+            for (StreamPreStateProcessor processor : streamPreStateProcessors) {
+                processor.setPreviousStatePostProcessor(new ANDPreviousProcessor(processor));
             }
         }
     }
@@ -123,5 +121,29 @@ public class LogicalPreStateProcessor extends StreamPreStateProcessor {
     @Override
     public ComplexEventChunk<StateEvent> processAndReturn(ComplexEventChunk complexEventChunk) {
         throw new RuntimeException("LogicalPreStateProcessor cannot process any events");
+    }
+
+    private class ANDPreviousProcessor extends StreamPostStateProcessor {
+        private PreStateProcessor preStateProcessor;
+
+        public ANDPreviousProcessor(PreStateProcessor preStateProcessor) {
+            this.preStateProcessor = preStateProcessor;
+        }
+
+        @Override
+        public List<StateEvent> events() {
+            for (StreamPreStateProcessor processor : LogicalPreStateProcessor.this.streamPreStateProcessors) {
+                if (processor != preStateProcessor && !processor.thisStatePostProcessor.newAndEveryStateEventList
+                        .isEmpty()) {
+                    return processor.thisStatePostProcessor.newAndEveryStateEventList;
+                }
+            }
+            return LogicalPreStateProcessor.this.getPreviousStatePostProcessor().events();
+        }
+
+        @Override
+        public void updateState() {
+            LogicalPreStateProcessor.this.getPreviousStatePostProcessor().updateState();
+        }
     }
 }

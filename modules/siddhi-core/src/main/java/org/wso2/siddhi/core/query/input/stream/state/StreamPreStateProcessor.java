@@ -277,6 +277,7 @@ public class StreamPreStateProcessor implements PreStateProcessor, Snapshotable 
         if (previousStatePostProcessor != null) {
             previousStatePostProcessor.updateState();
         }
+        this.consumedLastEvent = false;
     }
 
     /**
