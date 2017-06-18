@@ -18,7 +18,7 @@
 
 package org.wso2.siddhi.core.query.input.stream.state;
 
-import org.wso2.siddhi.core.config.ExecutionPlanContext;
+import org.wso2.siddhi.core.config.SiddhiAppContext;
 import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
 import org.wso2.siddhi.core.event.stream.StreamEvent;
@@ -40,7 +40,7 @@ public class StreamPostStateProcessor implements PostStateProcessor {
     protected int stateId;
     protected boolean isEventReturned;
     protected String elementId;
-    protected ExecutionPlanContext executionPlanContext;
+    protected SiddhiAppContext siddhiAppContext;
     protected String queryName;
 
     /**
@@ -58,13 +58,13 @@ public class StreamPostStateProcessor implements PostStateProcessor {
      */
     protected boolean endOfEvery = false;
 
-    public void init(ExecutionPlanContext executionPlanContext, String queryName) {
-        this.executionPlanContext = executionPlanContext;
+    public void init(SiddhiAppContext siddhiAppContext, String queryName) {
+        this.siddhiAppContext = siddhiAppContext;
         this.queryName = queryName;
         if (elementId == null) {
-            this.elementId = "StreamPreStateProcessor-" + executionPlanContext.getElementIdGenerator().createNewId();
+            this.elementId = "StreamPreStateProcessor-" + this.siddhiAppContext.getElementIdGenerator().createNewId();
         }
-        executionPlanContext.getSnapshotService().addSnapshotable(queryName, this);
+        this.siddhiAppContext.getSnapshotService().addSnapshotable(queryName, this);
     }
 
     @Override
@@ -171,7 +171,7 @@ public class StreamPostStateProcessor implements PostStateProcessor {
     public PostStateProcessor cloneProcessor(String key) {
         StreamPostStateProcessor processor = new StreamPostStateProcessor();
         cloneProperties(processor);
-        processor.init(executionPlanContext, queryName);
+        processor.init(siddhiAppContext, queryName);
         return processor;
     }
 
