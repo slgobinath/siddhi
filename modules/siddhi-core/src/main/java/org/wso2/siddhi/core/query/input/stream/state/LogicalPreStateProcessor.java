@@ -67,7 +67,7 @@ public class LogicalPreStateProcessor extends StreamPreStateProcessor {
     public PreStateProcessor cloneProcessor(String key) {
         LogicalPreStateProcessor processor = new LogicalPreStateProcessor(logicalType, stateType, withinStates);
         cloneProperties(processor, key);
-        processor.init(executionPlanContext, queryName);
+        processor.init(siddhiAppContext, queryName);
         return processor;
     }
 
