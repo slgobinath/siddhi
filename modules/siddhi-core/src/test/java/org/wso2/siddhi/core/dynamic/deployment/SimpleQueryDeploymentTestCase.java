@@ -19,13 +19,13 @@ package org.wso2.siddhi.core.dynamic.deployment;
 
 
 import org.junit.Test;
-import org.wso2.siddhi.core.ExecutionPlanRuntime;
+import org.wso2.siddhi.core.SiddhiAppRuntime;
 import org.wso2.siddhi.core.SiddhiManager;
 import org.wso2.siddhi.core.event.Event;
 import org.wso2.siddhi.core.query.output.callback.QueryCallback;
 import org.wso2.siddhi.core.stream.input.InputHandler;
 import org.wso2.siddhi.core.util.EventPrinter;
-import org.wso2.siddhi.query.api.ExecutionPlan;
+import org.wso2.siddhi.query.api.SiddhiApp;
 import org.wso2.siddhi.query.api.annotation.Annotation;
 import org.wso2.siddhi.query.api.definition.Attribute;
 import org.wso2.siddhi.query.api.definition.StreamDefinition;
@@ -45,9 +45,9 @@ public class SimpleQueryDeploymentTestCase {
                 .attribute("symbol", Attribute.Type.STRING)
                 .attribute("price", Attribute.Type.FLOAT)
                 .attribute("volume", Attribute.Type.INT);
-        Query query = Query.query();
-        query.annotation(Annotation.annotation("info").element("name", "query1"));
-        query.from(
+        Query oldQuery = Query.query();
+        oldQuery.annotation(Annotation.annotation("info").element("name", "query1"));
+        oldQuery.from(
                 InputStream.stream("StockStream").
                         filter(
                                 Expression.compare(
@@ -57,22 +57,22 @@ public class SimpleQueryDeploymentTestCase {
                                 )
                         )
         );
-        query.select(
+        oldQuery.select(
                 Selector.selector().
                         select("symbol", Expression.variable("symbol")).
                         select("price", Expression.variable("price")).
                         select("volume", Expression.variable("volume"))
         );
-        query.insertInto("OutStockStream");
+        oldQuery.insertInto("OutStockStream");
 
-        ExecutionPlan executionPlan = ExecutionPlan.executionPlan("Test")
+        SiddhiApp executionPlan = SiddhiApp.siddhiApp("Test")
                 .defineStream(streamDefinition)
-                .addQuery(query);
+                .addQuery(oldQuery);
 
         SiddhiManager siddhiManager = new SiddhiManager();
-        ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(executionPlan);
+        SiddhiAppRuntime siddhiAppRuntime = siddhiManager.createSiddhiAppRuntime(executionPlan);
 
-        executionPlanRuntime.addCallback("query1", new QueryCallback() {
+        siddhiAppRuntime.addCallback("query1", new QueryCallback() {
             @Override
             public void receive(long timeStamp, Event[] inEvents, Event[] removeEvents) {
                 EventPrinter.print(timeStamp, inEvents, removeEvents);
@@ -80,8 +80,8 @@ public class SimpleQueryDeploymentTestCase {
 
         });
 
-        InputHandler inputHandler = executionPlanRuntime.getInputHandler("StockStream");
-        executionPlanRuntime.start();
+        InputHandler inputHandler = siddhiAppRuntime.getInputHandler("StockStream");
+        siddhiAppRuntime.start();
 
         inputHandler.send(new Object[]{"IBM", 700f, 0});
         Thread.sleep(100);
@@ -90,7 +90,35 @@ public class SimpleQueryDeploymentTestCase {
         inputHandler.send(new Object[]{"WSO2", 80.5f, 600});
         Thread.sleep(100);
 
-        executionPlanRuntime.shutdown();
+
+
+
+//        Query newQuery = Query.query();
+//        newQuery.annotation(Annotation.annotation("info").element("name", "query1"));
+//        newQuery.from(
+//                InputStream.stream("StockStream").
+//                        filter(
+//                                Expression.compare(
+//                                        Expression.variable("volume"),
+//                                        Compare.Operator.GREATER_THAN_EQUAL,
+//                                        Expression.value(50)
+//                                )
+//                        )
+//        );
+//        newQuery.select(
+//                Selector.selector().
+//                        select("symbol", Expression.variable("symbol")).
+//                        select("price", Expression.variable("price")).
+//                        select("volume", Expression.variable("volume"))
+//        );
+//        newQuery.insertInto("OutStockStream");
+//
+//        inputHandler.send(new Object[]{"IBM", 700f, 150});
+//        Thread.sleep(100);
+//        inputHandler.send(new Object[]{"WSO2", 60.5f, 200});
+//        Thread.sleep(100);
+
+        siddhiAppRuntime.shutdown();
 
     }
 
